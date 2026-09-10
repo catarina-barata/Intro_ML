@@ -1,257 +1,125 @@
-<!DOCTYPE html>
-<html lang="pt-PT">
+<script>
+  const canvas = document.getElementById("gridCanvas");
+  const ctx = canvas.getContext("2d");
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simulador de Aprendizagem por Reforço - Introdução a ML</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background-color: #f0f4f8;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      color: #1e293b;
+  const TAM_GRID = 5;
+  const TAM_CELULA = canvas.width / TAM_GRID;
+
+  let posObjetivo = { x: 4, y: 4 };
+  let posObstaculo = { x: 2, y: 2 };
+  let posAgente = { x: 0, y: 0 };
+
+  let episodio = 1;
+  let pontuacaoTotal = 0;
+
+  let alpha = 0.1;
+  let gamma = 0.9;
+  let epsilon = 0.3;
+  let fps = 10;
+  let loopInterval;
+
+  // CORREÇÃO: Criação explícita da matriz com os valores base
+  let qTable = {};
+  for (let x = 0; x < TAM_GRID; x++) {
+    for (let y = 0; y < TAM_GRID; y++) {
+      qTable[`${x},${y}`] = [0.0, 0.0, 0.0, 0.0];
     }
+  }
 
-    h1 {
-      margin-bottom: 5px;
-      font-size: 24px;
-      color: #0f172a;
-    }
+  function reiniciarAgente() {
+    let x, y;
+    do {
+      x = Math.floor(Math.random() * TAM_GRID);
+      y = Math.floor(Math.random() * TAM_GRID);
+    } while ((x === posObjetivo.x && y === posObjetivo.y) || (x === posObstaculo.x && y === posObstaculo.y));
+    return { x, y };
+  }
 
-    p {
-      margin-top: 0;
-      margin-bottom: 20px;
-      color: #64748b;
-      font-size: 14px;
-      text-align: center;
-    }
+  posAgente = reiniciarAgente();
 
-    .container {
-      display: flex;
-      gap: 30px;
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .controls {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 15px;
-      width: 280px;
-    }
-
-    .stat-box {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      padding: 12px;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 15px;
-    }
-
-    .stat-value {
-      color: #2563eb;
-    }
-
-    canvas {
-      border: 2px solid #cbd5e1;
-      border-radius: 8px;
-      background-color: #f8fafc;
-    }
-
-    label {
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: -10px;
-      display: block;
-    }
-
-    input[type="range"] {
-      width: 100%;
-      margin-top: 5px;
-    }
-  </style>
-</head>
-
-<body>
-
-  <h1>Simulador de Reinforcement Learning (Q-Learning)</h1>
-  <p>Partilha de aula: O Agente (Azul) aprende a chegar ao Objetivo (Verde) evitando o Obstáculo (Vermelho).</p>
-
-  <div class="container">
-    <!-- Canvas do Grid -->
-    <canvas id="gridCanvas" width="400" height="400"></canvas>
-
-    <!-- Painel de Controlo e Estatísticas -->
-    <div class="controls">
-      <div class="stat-box">Episódio: <span id="lblEpisodio" class="stat-value">1</span></div>
-      <div class="stat-box">Recompensa Total: <span id="lblPontos" class="stat-value">0</span></div>
-
-      <div>
-        <label for="sldEpsilon">Taxa de Exploração (Epsilon): <span id="txtEpsilon">0.30</span></label>
-        <input type="range" id="sldEpsilon" min="0" max="1" step="0.05" value="0.30">
-      </div>
-      <div>
-        <label for="sldVelocidade">Velocidade da IA (Passos/seg): <span id="txtVelocidade">10</span></label>
-        <input type="range" id="sldVelocidade" min="1" max="60" step="1" value="10">
-      </div>
-      <p style="margin: 0; font-size: 11px; text-align: left; line-height: 1.4;">
-        💡 <b>Dica para os alunos:</b> Reduzam o Epsilon para 0 quando o robô já tiver aprendido o caminho para forçá-lo
-        a usar apenas o conhecimento adquirido!
-      </p>
-    </div>
-  </div>
-
-  <script>
-    const canvas = document.getElementById("gridCanvas");
-    const ctx = canvas.getContext("2d");
-
-    // Configuração do Grid 5x5
-    const TAM_GRID = 5;
-    const TAM_CELULA = canvas.width / TAM_GRID;
-
-    // Estado do Jogo
-    let posObjetivo = { x: 4, y: 4 };
-    let posObstaculo = { x: 2, y: 2 };
-    let posAgente = { x: 0, y: 0 };
-
-    let episodio = 1;
-    let pontuacaoTotal = 0;
-
-    // Parâmetros de RL
-    let alpha = 0.1;
-    let gamma = 0.9;
-    let epsilon = 0.3;
-    let fps = 10;
-    let loopInterval;
-
-    // Inicializar a Q-Table com zeros (5x5 estados, 4 ações: 0=Cima, 1=Baixo, 2=Esquerda, 3=Direita)
-    let qTable = {};
-    for (let x = 0; x < TAM_GRID; x++) {
-      for (let y = 0; y < TAM_GRID; y++) {
-        qTable[`${x},${y}`] =;
-      }
-    }
-
-    function reiniciarAgente() {
-      let x, y;
-      do {
-        x = Math.floor(Math.random() * TAM_GRID);
-        y = Math.floor(Math.random() * TAM_GRID);
-      } while ((x === posObjetivo.x && y === posObjetivo.y) || (x === posObstaculo.x && y === posObstaculo.y));
-      return { x, y };
-    }
-
-    posAgente = reiniciarAgente();
-
-    // Controlos de UI Dinâmicos
-    document.getElementById("sldEpsilon").addEventListener("input", (e) => {
-      epsilon = parseFloat(e.target.value);
-      document.getElementById("txtEpsilon").innerText = epsilon.toFixed(2);
-    });
-    document.getElementById("sldVelocidade").addEventListener("input", (e) => {
-      fps = parseInt(e.target.value);
-      document.getElementById("txtVelocidade").innerText = fps;
-      reiniciarLoop();
-    });
-
-    // Loop de Atualização e Decisão da IA
-    function atualizar() {
-      let estadoAtual = `${posAgente.x},${posAgente.y}`;
-      let acao;
-
-      // Estratégia Epsilon-Greedy
-      if (Math.random() < epsilon) {
-        acao = Math.floor(Math.random() * 4); // Explorar (Movimento Aleatório)
-      } else {
-        let valoresQ = qTable[estadoAtual];
-        acao = valoresQ.indexOf(Math.max(...valoresQ)); // Escolher a melhor ação conhecida
-      }
-
-      let xAntigo = posAgente.x;
-      let yAntigo = posAgente.y;
-
-      // Executar movimento com barreiras físicas nas bordas
-      if (acao === 0 && posAgente.y > 0) posAgente.y--;
-      if (acao === 1 && posAgente.y < TAM_GRID - 1) posAgente.y++;
-      if (acao === 2 && posAgente.x > 0) posAgente.x--;
-      if (acao === 3 && posAgente.x < TAM_GRID - 1) posAgente.x++;
-
-      let proximoEstado = `${posAgente.x},${posAgente.y}`;
-      let recompensa = -1; // Penalização por cada passo para promover velocidade
-
-      if (posAgente.x === posObjetivo.x && posAgente.y === posObjetivo.y) {
-        recompensa = 100;
-        pontuacaoTotal += 100;
-        posAgente = reiniciarAgente();
-        episodio++;
-      } else if (posAgente.x === posObstaculo.x && posAgente.y === posObstaculo.y) {
-        recompensa = -100;
-        pontuacaoTotal -= 100;
-        posAgente = reiniciarAgente();
-        episodio++;
-      } else {
-        pontuacaoTotal += recompensa;
-      }
-
-      // Atualização da Equação de Bellman na Q-Table
-      let maxQFuturo = Math.max(...qTable[proximoEstado]);
-      qTable[estadoAtual][acao] += alpha * (recompensa + gamma * maxQFuturo - qTable[estadoAtual][acao]);
-
-      // Atualizar os textos da interface
-      document.getElementById("lblEpisodio").innerText = episodio;
-      document.getElementById("lblPontos").innerText = pontuacaoTotal;
-
-      desenhar();
-    }
-
-    function desenhar() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Desenhar Linhas do Grid
-      ctx.strokeStyle = "#e2e8f0";
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= TAM_GRID; i++) {
-        ctx.beginPath();
-        ctx.moveTo(i * TAM_CELULA, 0);
-        ctx.lineTo(i * TAM_CELULA, canvas.height);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(0, i * TAM_CELULA);
-        ctx.lineTo(canvas.width, i * TAM_CELULA);
-        ctx.stroke();
-      }
-
-      // Desenhar Objetivo (Verde)
-      ctx.fillStyle = "#16a34a";
-      ctx.fillRect(posObjetivo.x * TAM_CELULA + 5, posObjetivo.y * TAM_CELULA + 5, TAM_CELULA - 10, TAM_CELULA - 10);
-
-      // Desenhar Obstáculo (Vermelho)
-      ctx.fillStyle = "#dc2626";
-      ctx.fillRect(posObstaculo.x * TAM_CELULA + 5, posObstaculo.y * TAM_CELULA + 5, TAM_CELULA - 10, TAM_CELULA - 10);
-
-      // Desenhar Agente Robô (Azul)
-      ctx.fillStyle = "#2563eb";
-      ctx.fillRect(posAgente.x * TAM_CELULA + 15, posAgente.y * TAM_CELULA + 15, TAM_CELULA - 30, TAM_CELULA - 30);
-    }
-
-    function reiniciarLoop() {
-      clearInterval(loopInterval);
-      loopInterval = setInterval(atualizar, 1000 / fps);
-    }
-
+  document.getElementById("sldEpsilon").addEventListener("input", (e) => {
+    epsilon = parseFloat(e.target.value);
+    document.getElementById("txtEpsilon").innerText = epsilon.toFixed(2);
+  });
+  document.getElementById("sldVelocidade").addEventListener("input", (e) => {
+    fps = parseInt(e.target.value);
+    document.getElementById("txtVelocidade").innerText = fps;
     reiniciarLoop();
-  </script>
-</body>
+  });
 
-</html>
+  function atualizar() {
+    let estadoAtual = `${posAgente.x},${posAgente.y}`;
+    let acao;
+
+    if (Math.random() < epsilon) {
+      acao = Math.floor(Math.random() * 4);
+    } else {
+      let valoresQ = qTable[estadoAtual];
+      acao = valoresQ.indexOf(Math.max(...valoresQ));
+    }
+
+    if (acao === 0 && posAgente.y > 0) posAgente.y--;
+    if (acao === 1 && posAgente.y < TAM_GRID - 1) posAgente.y++;
+    if (acao === 2 && posAgente.x > 0) posAgente.x--;
+    if (acao === 3 && posAgente.x < TAM_GRID - 1) posAgente.x++;
+
+    let proximoEstado = `${posAgente.x},${posAgente.y}`;
+    let recompensa = -1;
+
+    if (posAgente.x === posObjetivo.x && posAgente.y === posObjetivo.y) {
+      recompensa = 100;
+      pontuacaoTotal += 100;
+      posAgente = reiniciarAgente();
+      episodio++;
+    } else if (posAgente.x === posObstaculo.x && posAgente.y === posObstaculo.y) {
+      recompensa = -100;
+      pontuacaoTotal -= 100;
+      posAgente = reiniciarAgente();
+      episodio++;
+    } else {
+      pontuacaoTotal += recompensa;
+    }
+
+    let maxQFuturo = Math.max(...qTable[proximoEstado]);
+    qTable[estadoAtual][acao] += alpha * (recompensa + gamma * maxQFuturo - qTable[estadoAtual][acao]);
+
+    document.getElementById("lblEpisodio").innerText = episodio;
+    document.getElementById("lblPontos").innerText = pontuacaoTotal;
+
+    desenhar();
+  }
+
+  function desenhar() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= TAM_GRID; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * TAM_CELULA, 0);
+      ctx.lineTo(i * TAM_CELULA, canvas.height);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, i * TAM_CELULA);
+      ctx.lineTo(canvas.width, i * TAM_CELULA);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = "#16a34a";
+    ctx.fillRect(posObjetivo.x * TAM_CELULA + 5, posObjetivo.y * TAM_CELULA + 5, TAM_CELULA - 10, TAM_CELULA - 10);
+
+    ctx.fillStyle = "#dc2626";
+    ctx.fillRect(posObstaculo.x * TAM_CELULA + 5, posObstaculo.y * TAM_CELULA + 5, TAM_CELULA - 10, TAM_CELULA - 10);
+
+    ctx.fillStyle = "#2563eb";
+    ctx.fillRect(posAgente.x * TAM_CELULA + 15, posAgente.y * TAM_CELULA + 15, TAM_CELULA - 30, TAM_CELULA - 30);
+  }
+
+  function reiniciarLoop() {
+    clearInterval(loopInterval);
+    loopInterval = setInterval(atualizar, 1000 / fps);
+  }
+
+  reiniciarLoop();
+  desenhar(); // Força o primeiro desenho imediatamente no ecrã
+</script>
