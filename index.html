@@ -1,21 +1,257 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+<!DOCTYPE html>
+<html lang="pt-PT">
+
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta http-equiv="Content-Style-Type" content="text/css">
-  <title></title>
-  <meta name="Generator" content="Cocoa HTML Writer">
-  <meta name="CocoaVersion" content="2685.7">
-  <style type="text/css">
-    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Courier; -webkit-text-stroke: #000000}
-    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Courier; -webkit-text-stroke: #000000; min-height: 17.0px}
-    span.s1 {font-kerning: none}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de Aprendizagem por Reforço - Introdução a ML</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background-color: #f0f4f8;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #1e293b;
+    }
+
+    h1 {
+      margin-bottom: 5px;
+      font-size: 24px;
+      color: #0f172a;
+    }
+
+    p {
+      margin-top: 0;
+      margin-bottom: 20px;
+      color: #64748b;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .container {
+      display: flex;
+      gap: 30px;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 15px;
+      width: 280px;
+    }
+
+    .stat-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 15px;
+    }
+
+    .stat-value {
+      color: #2563eb;
+    }
+
+    canvas {
+      border: 2px solid #cbd5e1;
+      border-radius: 8px;
+      background-color: #f8fafc;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: -10px;
+      display: block;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin-top: 5px;
+    }
   </style>
 </head>
+
 <body>
-<p class="p1"><span class="s1">import pygame import random import numpy as np import sys # Inicialização do Pygame pygame.init() pygame.display.set_caption("Simulador de Reinforcement Learning - Q-Learning")</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"># Configurações do Grid (Mundo de 5x5) TAMANHO_CELULA = 100 LARGURA_GRID, ALTURA_GRID = 5, 5 LARGURA_TELA = LARGURA_GRID * TAMANHO_CELULA ALTURA_TELA = (ALTURA_GRID * TAMANHO_CELULA) + 60 # Espaço extra para o texto TELA = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA)) RELOGIO = pygame.time.Clock() # Cores COR_FUNDO = (240, 244, 248) COR_LINHA = (200, 214, 224) COR_AGENTE = (37, 99, 235) # Azul COR_OBJETIVO = (22, 163, 74) # Verde COR_OBSTACULO = (220, 38, 38) # Vermelho COR_TEXTO = (30, 41, 59) # Elementos do Cenário (X, Y) pos_objetivo = (4, 4) pos_obstaculo = (2, 2) # Parâmetros de Reinforcement Learning (Q-Learning) # Ações: 0=Cima, 1=Baixo, 2=Esquerda, 3=Direita acoes = [0, 1, 2, 3] q_table = np.zeros((LARGURA_GRID, ALTURA_GRID, len(acoes))) alpha = 0.1 # Taxa de aprendizagem gamma = 0.9 # Fator de desconto epsilon = 0.3 # Taxa de exploração (30% de passos aleatórios) # Estado inicial do Agente def reiniciar_agente(): while True: x = random.randint(0, LARGURA_GRID - 1) y = random.randint(0, ALTURA_GRID - 1) if (x, y) != pos_objetivo and (x, y) != pos_obstaculo: return [x, y] pos_agente = reiniciar_agente() episodio = 1 pontuacao_total = 0 recompensa_atual = 0 FONTE = pygame.font.SysFont("Arial", 18, bold=True) # Loop Principal do Simulador rodando = True while rodando: TELA.fill(COR_FUNDO) # Processar eventos de fechar janela for evento in pygame.event.get(): if evento.type == pygame.QUIT: rodando = False pygame.quit() sys.exit() # --- LÓGICA DO Q-LEARNING (Tomada de Decisão) --- x_antigo, y_antigo = pos_agente[0], pos_agente[1] # Escolha da ação: Exploração (Aleatória) vs Exploração de Conhecimento (Exploit) if random.uniform(0, 1) &lt; epsilon: acao = random.choice(acoes) # Explorar else: acao = np.argmax(q_table[x_antigo, y_antigo]) # Escolher a melhor conhecida # Executar a ação no mapa if acao == 0 and pos_agente[1] &gt; 0: # Cima pos_agente[1] -= 1 elif acao == 1 and pos_agente[1] &lt; ALTURA_GRID - 1: # Baixo pos_agente[1] += 1 elif acao == 2 and pos_agente[0] &gt; 0: # Esquerda pos_agente[0] -= 1 elif acao == 3 and pos_agente[0] &lt; LARGURA_GRID - 1: # Direita pos_agente[0] += 1 x_novo, y_novo = pos_agente[0], pos_agente[1] # Sistema de Recompensas if (x_novo, y_novo) == pos_objetivo: recompensa = 100 pontuacao_total += 100 pos_agente = reiniciar_agente() # Chegou ao fim, reinicia episodio += 1 elif (x_novo, y_novo) == pos_obstaculo: recompensa = -100 pontuacao_total -= 100 pos_agente = reiniciar_agente() # Bateu, reinicia episodio += 1 else: recompensa = -1 # Penalização por cada passo gasto (para ser rápido) pontuacao_total -= 1 # Atualização da Q-Table (Equação de Bellman simplificada) melhor_q_futuro = np.max(q_table[x_novo, y_novo]) q_table[x_antigo, y_antigo, acao] += alpha * (recompensa + gamma * melhor_q_futuro - q_table[x_antigo, y_antigo, acao]) # --- DESENHO GRÁFICO NA TELA --- # Desenhar as linhas do Grid for x in range(0, LARGURA_TELA, TAMANHO_CELULA): pygame.draw.line(TELA, COR_LINHA, (x, 0), (x, ALTURA_GRID * TAMANHO_CELULA)) for y in range(0, ALTURA_GRID * TAMANHO_CELULA, TAMANHO_CELULA): pygame.draw.line(TELA, COR_LINHA, (0, y), (LARGURA_TELA, y)) # Desenhar Objetivo, Obstáculo e Agente pygame.draw.rect(TELA, COR_OBJETIVO, (pos_objetivo[0]*TAMANHO_CELULA+5, pos_objetivo[1]*TAMANHO_CELULA+5, TAMANHO_CELULA-10, TAMANHO_CELULA-10)) pygame.draw.rect(TELA, COR_OBSTACULO, (pos_obstaculo[0]*TAMANHO_CELULA+5, pos_obstaculo[1]*TAMANHO_CELULA+5, TAMANHO_CELULA-10, TAMANHO_CELULA-10)) pygame.draw.rect(TELA, COR_AGENTE, (pos_agente[0]*TAMANHO_CELULA+15, pos_agente[1]*TAMANHO_CELULA+15, TAMANHO_CELULA-30, TAMANHO_CELULA-30)) # Desenhar o painel de texto inferior (Dashboard de Aula) pygame.draw.rect(TELA, (255, 255, 255), (0, ALTURA_GRID * TAMANHO_CELULA, LARGURA_TELA, 60)) texto_status = FONTE.render(f"Episódio: {episodio} | Pontuação: {pontuacao_total} | Epsilon (Exploração): {epsilon}", True, COR_TEXTO) TELA.blit(texto_status, (15, ALTURA_GRID * TAMANHO_CELULA + 20)) pygame.display.flip() RELOGIO.tick(10) # Controla a velocidade (10 passos por segundo para os alunos verem bem)</span></p>
+
+  <h1>Simulador de Reinforcement Learning (Q-Learning)</h1>
+  <p>Partilha de aula: O Agente (Azul) aprende a chegar ao Objetivo (Verde) evitando o Obstáculo (Vermelho).</p>
+
+  <div class="container">
+    <!-- Canvas do Grid -->
+    <canvas id="gridCanvas" width="400" height="400"></canvas>
+
+    <!-- Painel de Controlo e Estatísticas -->
+    <div class="controls">
+      <div class="stat-box">Episódio: <span id="lblEpisodio" class="stat-value">1</span></div>
+      <div class="stat-box">Recompensa Total: <span id="lblPontos" class="stat-value">0</span></div>
+
+      <div>
+        <label for="sldEpsilon">Taxa de Exploração (Epsilon): <span id="txtEpsilon">0.30</span></label>
+        <input type="range" id="sldEpsilon" min="0" max="1" step="0.05" value="0.30">
+      </div>
+      <div>
+        <label for="sldVelocidade">Velocidade da IA (Passos/seg): <span id="txtVelocidade">10</span></label>
+        <input type="range" id="sldVelocidade" min="1" max="60" step="1" value="10">
+      </div>
+      <p style="margin: 0; font-size: 11px; text-align: left; line-height: 1.4;">
+        💡 <b>Dica para os alunos:</b> Reduzam o Epsilon para 0 quando o robô já tiver aprendido o caminho para forçá-lo
+        a usar apenas o conhecimento adquirido!
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gridCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Configuração do Grid 5x5
+    const TAM_GRID = 5;
+    const TAM_CELULA = canvas.width / TAM_GRID;
+
+    // Estado do Jogo
+    let posObjetivo = { x: 4, y: 4 };
+    let posObstaculo = { x: 2, y: 2 };
+    let posAgente = { x: 0, y: 0 };
+
+    let episodio = 1;
+    let pontuacaoTotal = 0;
+
+    // Parâmetros de RL
+    let alpha = 0.1;
+    let gamma = 0.9;
+    let epsilon = 0.3;
+    let fps = 10;
+    let loopInterval;
+
+    // Inicializar a Q-Table com zeros (5x5 estados, 4 ações: 0=Cima, 1=Baixo, 2=Esquerda, 3=Direita)
+    let qTable = {};
+    for (let x = 0; x < TAM_GRID; x++) {
+      for (let y = 0; y < TAM_GRID; y++) {
+        qTable[`${x},${y}`] =;
+      }
+    }
+
+    function reiniciarAgente() {
+      let x, y;
+      do {
+        x = Math.floor(Math.random() * TAM_GRID);
+        y = Math.floor(Math.random() * TAM_GRID);
+      } while ((x === posObjetivo.x && y === posObjetivo.y) || (x === posObstaculo.x && y === posObstaculo.y));
+      return { x, y };
+    }
+
+    posAgente = reiniciarAgente();
+
+    // Controlos de UI Dinâmicos
+    document.getElementById("sldEpsilon").addEventListener("input", (e) => {
+      epsilon = parseFloat(e.target.value);
+      document.getElementById("txtEpsilon").innerText = epsilon.toFixed(2);
+    });
+    document.getElementById("sldVelocidade").addEventListener("input", (e) => {
+      fps = parseInt(e.target.value);
+      document.getElementById("txtVelocidade").innerText = fps;
+      reiniciarLoop();
+    });
+
+    // Loop de Atualização e Decisão da IA
+    function atualizar() {
+      let estadoAtual = `${posAgente.x},${posAgente.y}`;
+      let acao;
+
+      // Estratégia Epsilon-Greedy
+      if (Math.random() < epsilon) {
+        acao = Math.floor(Math.random() * 4); // Explorar (Movimento Aleatório)
+      } else {
+        let valoresQ = qTable[estadoAtual];
+        acao = valoresQ.indexOf(Math.max(...valoresQ)); // Escolher a melhor ação conhecida
+      }
+
+      let xAntigo = posAgente.x;
+      let yAntigo = posAgente.y;
+
+      // Executar movimento com barreiras físicas nas bordas
+      if (acao === 0 && posAgente.y > 0) posAgente.y--;
+      if (acao === 1 && posAgente.y < TAM_GRID - 1) posAgente.y++;
+      if (acao === 2 && posAgente.x > 0) posAgente.x--;
+      if (acao === 3 && posAgente.x < TAM_GRID - 1) posAgente.x++;
+
+      let proximoEstado = `${posAgente.x},${posAgente.y}`;
+      let recompensa = -1; // Penalização por cada passo para promover velocidade
+
+      if (posAgente.x === posObjetivo.x && posAgente.y === posObjetivo.y) {
+        recompensa = 100;
+        pontuacaoTotal += 100;
+        posAgente = reiniciarAgente();
+        episodio++;
+      } else if (posAgente.x === posObstaculo.x && posAgente.y === posObstaculo.y) {
+        recompensa = -100;
+        pontuacaoTotal -= 100;
+        posAgente = reiniciarAgente();
+        episodio++;
+      } else {
+        pontuacaoTotal += recompensa;
+      }
+
+      // Atualização da Equação de Bellman na Q-Table
+      let maxQFuturo = Math.max(...qTable[proximoEstado]);
+      qTable[estadoAtual][acao] += alpha * (recompensa + gamma * maxQFuturo - qTable[estadoAtual][acao]);
+
+      // Atualizar os textos da interface
+      document.getElementById("lblEpisodio").innerText = episodio;
+      document.getElementById("lblPontos").innerText = pontuacaoTotal;
+
+      desenhar();
+    }
+
+    function desenhar() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Desenhar Linhas do Grid
+      ctx.strokeStyle = "#e2e8f0";
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= TAM_GRID; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * TAM_CELULA, 0);
+        ctx.lineTo(i * TAM_CELULA, canvas.height);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, i * TAM_CELULA);
+        ctx.lineTo(canvas.width, i * TAM_CELULA);
+        ctx.stroke();
+      }
+
+      // Desenhar Objetivo (Verde)
+      ctx.fillStyle = "#16a34a";
+      ctx.fillRect(posObjetivo.x * TAM_CELULA + 5, posObjetivo.y * TAM_CELULA + 5, TAM_CELULA - 10, TAM_CELULA - 10);
+
+      // Desenhar Obstáculo (Vermelho)
+      ctx.fillStyle = "#dc2626";
+      ctx.fillRect(posObstaculo.x * TAM_CELULA + 5, posObstaculo.y * TAM_CELULA + 5, TAM_CELULA - 10, TAM_CELULA - 10);
+
+      // Desenhar Agente Robô (Azul)
+      ctx.fillStyle = "#2563eb";
+      ctx.fillRect(posAgente.x * TAM_CELULA + 15, posAgente.y * TAM_CELULA + 15, TAM_CELULA - 30, TAM_CELULA - 30);
+    }
+
+    function reiniciarLoop() {
+      clearInterval(loopInterval);
+      loopInterval = setInterval(atualizar, 1000 / fps);
+    }
+
+    reiniciarLoop();
+  </script>
 </body>
+
 </html>
